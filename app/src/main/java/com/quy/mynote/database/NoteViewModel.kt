@@ -5,7 +5,7 @@ import androidx.lifecycle.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
-class NoteViewModel(application: Application): AndroidViewModel(application) {
+class NoteViewModel(application: Application): AndroidViewModel(application){
 
     val readAllData: LiveData<List<Note>>
     private val repository: NoteRepository
@@ -27,4 +27,5 @@ class NoteViewModel(application: Application): AndroidViewModel(application) {
             repository.deleteNote(note)
         }
     }
+
 }

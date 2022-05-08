@@ -1,6 +1,7 @@
 package com.quy.mynote
 
 import android.annotation.SuppressLint
+import android.app.Application
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -19,8 +20,10 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.LiveData
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.quy.mynote.database.MyViewModelFactory
 import com.quy.mynote.database.Note
 import com.quy.mynote.database.NoteViewModel
 import com.quy.mynote.ui.theme.MyNoteTheme
@@ -28,9 +31,7 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 
-
-
-class MainActivity : ComponentActivity() {
+class MainActivity : ComponentActivity(),LifecycleOwner {
     @SuppressLint("UnrememberedMutableState", "SimpleDateFormat")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -43,7 +44,10 @@ class MainActivity : ComponentActivity() {
                     mutableStateOf(value = "")
                 }
 
-                val noteViewModel = viewModel<NoteViewModel>()
+                val noteViewModel = viewModel<NoteViewModel>(
+                    factory = MyViewModelFactory(applicationContext as Application)
+                )
+                var listNote by mutableStateOf(listOf<Note>())
 
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
@@ -93,7 +97,13 @@ class MainActivity : ComponentActivity() {
                             onClick = {
                                 val sdf = SimpleDateFormat("EEE, dd MMMM hh:mm a")
                                 val currentDate = sdf.format(Date())
-                                noteViewModel.addNote(Note(title = titleState.value, content = noteState.value, time = currentDate))
+                                noteViewModel.addNote(
+                                    Note(
+                                        title = titleState.value,
+                                        content = noteState.value,
+                                        time = currentDate
+                                    )
+                                )
                                 titleState.value = ""
                                 noteState.value = ""
                             },
@@ -103,12 +113,12 @@ class MainActivity : ComponentActivity() {
                             Text("Save", style = MaterialTheme.typography.button)
                         }
                         Divider(modifier = Modifier.padding(vertical = 15.dp))
-                        noteViewModel.readAllData.value?.let { it1 ->
-                            ListNote(
-                                data = it1
-                            ) { note ->
-                                noteViewModel.deleteNote(note)
-                            }
+
+                        noteViewModel.readAllData.observeForever(androidx.lifecycle.Observer { notes ->
+                            listNote = notes
+                        })
+                        ListNote(data = listNote) { note ->
+                            noteViewModel.deleteNote(note)
                         }
                     }
                 }
@@ -148,8 +158,10 @@ fun TopBar() {
 
 @Composable
 fun ListNote(data: List<Note>, deleteValue: (Note) -> Unit) {
+
     LazyColumn {
         items(data) { note ->
+
             Surface(
                 modifier = Modifier
                     .padding(4.dp)
